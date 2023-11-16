@@ -51,7 +51,7 @@ def summarize_text(text, api_key):
     try:
         response = openai.chat.completions.create(
                 model="gpt-3.5-turbo-1106",
-                messages=[{"role": "user", "content": f"Summarize the following text in less than 150 words based on the langauge it is written in:\n{text}"}],
+                messages=[{"role": "user", "content": f"Summarize the following text in less than 150 words (write the summary in the language the text is written in):\n{text}"}],
                 max_tokens=700
             )
         print(response)
