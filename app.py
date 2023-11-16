@@ -5,6 +5,8 @@ import openai
 from io import BytesIO
 from pydub import AudioSegment
 import base64
+import os
+import tempfile
 
 st.title('Webpage Summary and Audio Extractinator')
 
@@ -68,15 +70,17 @@ def text_to_speech(summary, api_key):
             voice="shimmer",
             input=summary
         )
-        
-        # Use BytesIO to handle the audio data
-        audio_data = BytesIO()
-        response.stream_to_file(audio_data)
-        audio_data.seek(0)  # Reset file pointer to the beginning
-        return audio_data.getvalue()
+
+        # Write the audio content to a temporary file
+        temp_audio_path = 'temp_audio.mp3'
+        with open(temp_audio_path, "wb") as audio_file:
+            audio_file.write(response.content)
+
+        return temp_audio_path
     except Exception as e:
         print("Exception occurred:", e)
-        return f"Error in generating audio: {e}"
+        return None
+
 
 # Function to create audio player
 def create_audio_player(audio_data):
@@ -101,13 +105,10 @@ if st.session_state['api_key'] and st.session_state['key_submitted']:
                     st.write(summary)
 
                     # Text to Speech
-                    audio_data = text_to_speech(summary, st.session_state['api_key'])
-                    if isinstance(audio_data, bytes):
-                        audio_player = create_audio_player(audio_data)
-                        st.markdown(audio_player, unsafe_allow_html=True)
+                    audio_file_path = text_to_speech(summary, st.session_state['api_key'])
+                    if audio_file_path:
+                        st.audio(audio_file_path, format="audio/mp3")
                     else:
-                        st.error(audio_data)
-                else:
-                    st.error(content)
+                        st.error("Error in generating audio")
 else:
     st.sidebar.warning("Please enter your OpenAI API Key to use this app.")
