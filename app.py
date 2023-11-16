@@ -5,10 +5,15 @@ import openai
 from io import BytesIO
 from pydub import AudioSegment
 import base64
-import os
 import tempfile
 
-st.title('Webpage Summary and Audio Extractinator')
+st.title('Webpage Summarizer')
+
+st.markdown("""
+    This app extracts content from the URL you provide & generates a summary. 
+    Please enter the URL in the text box below and click the 
+    'Extract and Summarize' button. Ensure your OpenAI API key is entered in the sidebar otherwise the box will not be visible.
+""")
 
 # Initialize session state for API key and its submission status
 if 'api_key' not in st.session_state:
@@ -16,15 +21,14 @@ if 'api_key' not in st.session_state:
 if 'key_submitted' not in st.session_state:
     st.session_state['key_submitted'] = False
 
-# Function to handle API key submission
-def submit_api_key():
-    st.session_state['api_key'] = api_key_input
-    st.session_state['key_submitted'] = True
-    st.sidebar.success("API Key submitted successfully!")
-
-# API Key Input in Sidebar
-api_key_input = st.sidebar.text_input("Enter your OpenAI API Key", type="password", key="api_key_input")
-st.sidebar.button('Submit API Key', on_click=submit_api_key)
+# Sidebar for API Key
+with st.sidebar:
+    st.header("Configuration")
+    api_key_input = st.text_input("Enter your OpenAI API Key", type="password", key="api_key_input")
+    if st.button('Submit API Key'):
+        st.session_state['api_key'] = api_key_input
+        st.session_state['key_submitted'] = True
+        st.success("API Key submitted successfully!")
 
 # Extract content from URL
 def extract_content(url):
@@ -54,12 +58,10 @@ def summarize_text(text, api_key):
                 messages=[{"role": "user", "content": f"Summarize the following text in less than 150 words:\n{text}"}],
                 max_tokens=700
             )
-        print(response)
         summary = response.choices[0].message.content.strip()
         return summary
     except Exception as e:
         return f"Error in generating summary: {e}\n{response}"
-
 
 # Function to convert summary to speech
 def text_to_speech(summary, api_key):
@@ -70,8 +72,7 @@ def text_to_speech(summary, api_key):
             voice="shimmer",
             input=summary
         )
-
-        # Write the audio content to a temporary file
+        
         temp_audio_path = 'temp_audio.mp3'
         with open(temp_audio_path, "wb") as audio_file:
             audio_file.write(response.content)
@@ -81,18 +82,8 @@ def text_to_speech(summary, api_key):
         print("Exception occurred:", e)
         return None
 
-
-# Function to create audio player
-def create_audio_player(audio_data):
-    audio = AudioSegment.from_file(BytesIO(audio_data), format="mp3")
-    audio_file = BytesIO()
-    audio.export(audio_file, format="mp3")
-    base64_audio = base64.b64encode(audio_file.getvalue()).decode()
-    audio_html = f'<audio controls><source src="data:audio/mp3;base64,{base64_audio}" type="audio/mpeg"></audio>'
-    return audio_html
-
 # Main functionality
-if st.session_state['api_key'] and st.session_state['key_submitted']:
+if st.session_state.get('api_key') and st.session_state.get('key_submitted'):
     urls = st.text_area("Enter a URL:", key="url_input").split("\n")
 
     if st.button('Extract and Summarize'):
@@ -104,7 +95,6 @@ if st.session_state['api_key'] and st.session_state['key_submitted']:
                     st.subheader(f"Summary for {url}")
                     st.write(summary)
 
-                    # Text to Speech
                     audio_file_path = text_to_speech(summary, st.session_state['api_key'])
                     if audio_file_path:
                         st.audio(audio_file_path, format="audio/mp3")
